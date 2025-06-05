@@ -1,3 +1,3 @@
 #!/bin/sh
 
-docker run --rm -it -v $(pwd):/repo msse/cuda
+docker run --rm -it --gpus all -v $(pwd):/repo msse/cuda

@@ -1,2 +1,2 @@
-docker run --rm -it -v %cd%:/repo msse/cuda
+docker run --rm -it --gpus all -v %cd%:/repo msse/cuda
 pause
