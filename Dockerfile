@@ -2,7 +2,7 @@
 # Docker file for an MDI engine
 #------------------------------------------------------------#
 
-FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
+FROM taylorabarnes/devenv-cuda:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -31,12 +31,3 @@ RUN python -m pip install --upgrade pip setuptools wheel && \
                           matplotlib \
                           pandas \
                           jupyter
-
-# Copy the entrypoint file into the Docker image
-COPY entrypoint.sh /entrypoint.sh
-
-# Make the entrypoint script executable
-RUN chmod +x /entrypoint.sh
-
-# Define the entrypoint script that should be run
-ENTRYPOINT ["/entrypoint.sh"]

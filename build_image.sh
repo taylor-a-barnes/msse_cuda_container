@@ -1,3 +1,3 @@
 #!/bin/sh
 
-docker build -t msse/cuda .
+docker build -t taylorabarnes/msse-cuda .

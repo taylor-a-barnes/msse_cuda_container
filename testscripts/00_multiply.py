@@ -1,7 +1,7 @@
 import numpy as np
-import pycuda
 import pycuda.autoinit
 from pycuda import gpuarray
+from pycuda.elementwise import ElementwiseKernel
 
 
 
@@ -94,7 +94,7 @@ print(f"Sum, using reduce: {result}")
 
 
 # Now, we're going to write some explicit code to do the above scalar operations
-scalar_kernel = pycuda.elementwise.ElementwiseKernel(
+scalar_kernel = ElementwiseKernel(
 "float *input, float *result",
 "result[i] = (10 * input[i]) + 1;",
 "scalar_kernel")
