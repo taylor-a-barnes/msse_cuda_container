@@ -634,7 +634,7 @@ if __name__ == '__main__':
 
      t1 = time()
      sn.bsgd(training=ctrain, labels=label_train, batch_size=16, max_streams=10, epochs=100 , delta=0.0001,
-     training_rate=1)
+     training_rate=0.5)
      training_time = time() - t1
      
      hits = 0
