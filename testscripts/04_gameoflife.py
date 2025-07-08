@@ -35,7 +35,7 @@ def update_animation(frame):
     return [im]
 
 
-cuda_module = pycuda.compiler.SourceModule("""
+cuda_module = SourceModule("""
 #include <stdint.h>
 
 __device__ uint8_t get_value(uint8_t *data, int x, int y, int image_width, int image_height) {
