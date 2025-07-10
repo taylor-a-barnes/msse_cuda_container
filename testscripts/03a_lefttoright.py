@@ -61,8 +61,7 @@ fig, ax = plt.subplots()
 im = ax.imshow(np.zeros((image_height, image_width, 3), dtype=np.uint8))
 ani = FuncAnimation(fig,
                     update_animation,
-                    frames=num_frames,
-                    blit=True)
+                    frames=num_frames)
 ani.save("animation.gif", fps=10, dpi=200)
 
 

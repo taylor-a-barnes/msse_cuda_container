@@ -41,17 +41,19 @@ cuda_module = pycuda.compiler.SourceModule("""
 __global__ void run_simulation(uint8_t *data, uint8_t *data_new, int image_width, int image_height) {
   int x = threadIdx.x + ( blockIdx.x * blockDim.x );
   int y = threadIdx.y + ( blockIdx.y * blockDim.y );
-  int index = (y * image_width) + x;
+  if ( x < image_width && y < image_height ) {
+    int index = (y * image_width) + x;
 
-  int left_x = ( (x - 1) + image_width ) % image_width;
-  int left_value = data[(y * image_width) + left_x];
-  data_new[index] = left_value;
+    int left_x = ( (x - 1) + image_width ) % image_width;
+    int left_value = data[(y * image_width) + left_x];
+    data_new[index] = left_value;
+  }
 }
 """)
 run_simulation = cuda_module.get_function("run_simulation")
 
 
-image_width = 256
+image_width = 512
 image_height = 512
 num_frames = 100
 
@@ -70,8 +72,7 @@ fig, ax = plt.subplots()
 im = ax.imshow(np.zeros((image_height, image_width, 3), dtype=np.uint8))
 ani = FuncAnimation(fig,
                     update_animation,
-                    frames=num_frames,
-                    blit=True)
+                    frames=num_frames)
 ani.save("animation.gif", fps=10, dpi=200)
 
 
