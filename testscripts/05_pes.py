@@ -95,13 +95,30 @@ class Network:
             for ilayer in range( 1, len(self.layers) ):
                 self.layers[ilayer].apply_gradient(batch_size, training_rate)
 
+    def test(self):
+        nvalues = 200
+        rvalues = np.zeros( (ninputs,), dtype=np.float32 )
+        erefs = np.zeros( (ninputs,), dtype=np.float32 )
+        for ival in range(nvalues):
+            rvalues[ival] = max_rvalue * ( ival/nvalues ) + min_rvalue * ( 1.0 - ival/nvalues )
+            erefs[ival] = morse_potential(De, re, a, rvalues[ival])
+
+        for ival in range(nvalues):
+            # Set the input layer
+            self.layers[0].activations[0] = rvalues[ival]
+
+            # Feedforward through the other layers
+            for ilayer in range( 1, len(self.layers) ):
+                self.layers[ilayer].feedforward()
+            print(f"Testing, ref: {self.layers[-1].activations[0]}, {erefs[ival]}")
+
 
 def morse_potential(De, re, a, r):
     inner = 1.0 - math.exp(-a * (r - re))
     return De * inner * inner
 
 
-ninputs = 100
+ninputs = 200
 De = 10.0
 re = 1.0
 a = 1.0
@@ -119,7 +136,8 @@ for idx, r in enumerate(rvalues):
 print(f"erefs: {erefs}")
 
 
-net = Network( [1, 16, 16, 1], rvalues, erefs )
+net = Network( [1, 32, 32, 1], rvalues, erefs )
 net.train( 200 )
+net.test()
 
 
