@@ -1,12 +1,4 @@
-from __future__ import division
-import pycuda.autoinit
-import pycuda.driver as drv
-from pycuda import gpuarray
-from pycuda.compiler import SourceModule
-from pycuda.elementwise import ElementwiseKernel
 import numpy as np
-from queue import Queue
-import csv
 from time import time
 import math
 
@@ -16,7 +8,6 @@ class InputLayer():
     def __init__(self, size):
         self.size = size
         self.activations = np.zeros( (self.size,), dtype=np.float32 )
-        self.activations_gpu = gpuarray.to_gpu( self.activations )
 
 
 class Layer:
@@ -32,17 +23,13 @@ class Layer:
         
         
         # NOTE: For anything with more than one input, need to include that in the dimensions here
-        #self.weights = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.previous_layer.size, self.size)) )
         self.weights = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.size, self.previous_layer.size)) )
-        self.weights_gpu = gpuarray.to_gpu( self.weights )
         self.biases = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.size,)) )
-        self.biases_gpu = gpuarray.to_gpu( self.biases )
         
-        # The actions, before applying sigmoid
+        # The activations, before applying sigmoid
         self.rawactivations = np.zeros( (self.size,), dtype=np.float32 )
         
         self.activations = np.zeros( (self.size,), dtype=np.float32 )
-        self.activations_gpu = gpuarray.to_gpu( self.activations )
         
         self.weights_grad = np.zeros( (self.size, self.previous_layer.size), dtype=np.float32 )
         self.biases_grad = np.zeros( (self.size,), dtype=np.float32 )
@@ -60,14 +47,18 @@ class Layer:
 
         if self.next_layer is None: # Don't apply sigmoid to the output layer
             self.activations = self.rawactivations
-        else: # Apply the sigmoid function
-            self.activations = 1.0 / ( 1.0 + np.exp(self.rawactivations) )
+        else: 
+            # Apply the sigmoid function
+            self.activations = 1.0 / ( 1.0 + np.exp(-self.rawactivations) )
+            # Apply ReLU
+            #self.activations = np.maximum(0, self.rawactivations)  # ReLU for hidden layers
 
     def backpropagation(self, reference=None):
 
         if reference is None:
             # Get this from differentiating the sigmoid
             activation_grad = self.activations * (1.0 - self.activations)
+            #activation_grad = np.where(self.rawactivations > 0, 1.0, 0.0)  # Derivative of ReLU
 
             self.delta = np.dot(self.next_layer.weights.transpose(), self.next_layer.delta) * activation_grad
         else:
@@ -103,13 +94,15 @@ def morse_potential(De, re, a, r):
 
 
 ninputs = 100
-De = 1.0
+De = 10.0
 re = 1.0
 a = 1.0
-training_rate = 0.01
+min_rvalue = 0.5
+max_rvalue = 5.0
+training_rate = 0.1
 
 # Randomly generate a set of distances
-rvalues = np.float32( np.random.uniform(0.5, 5.0, (ninputs,)) )
+rvalues = np.float32( np.random.uniform(min_rvalue, max_rvalue, (ninputs,)) )
 #print(f"rvalues: {rvalues}")
 
 # Generate the reference energies for each of these distances
@@ -123,36 +116,34 @@ input_layer = InputLayer(1)
 
 # Create the hidden layer
 hidden_layer = Layer(16, input_layer)
+hidden_layer2 = Layer(16, hidden_layer)
 
 # Create the output layer
-output_layer = Layer(1, hidden_layer)
+output_layer = Layer(1, hidden_layer2)
 
 
 
 
 for iepoch in range(1000):
-    batch_size = 90
+    batch_size = ninputs
+    indices = np.random.permutation(batch_size)
+    rvalues_shuffled = rvalues[indices]
+    erefs_shuffled = erefs[indices]
     for iref in range(batch_size):
-        reference = erefs[iref]
+        reference = erefs_shuffled[iref]
         #reference = 10.0
-        input_layer.activations[0] = rvalues[iref]
+        input_layer.activations[0] = ( rvalues_shuffled[iref] - min_rvalue ) / ( max_rvalue - min_rvalue )
         hidden_layer.feedforward()
+        hidden_layer2.feedforward()
         output_layer.feedforward()
         print(f"Output, ref: {output_layer.activations}, {reference}")
 
         # Do backpropagation
         output_layer.backpropagation(reference)
+        hidden_layer2.backpropagation()
         hidden_layer.backpropagation()
 
     output_layer.apply_gradient(batch_size, training_rate)
+    hidden_layer2.apply_gradient(batch_size, training_rate)
     hidden_layer.apply_gradient(batch_size, training_rate)
-    
-    # NEED TO ZERO GRADIENTS
-
-
-
-
-
-
-
 
