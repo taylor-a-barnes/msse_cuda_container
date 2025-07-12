@@ -35,8 +35,8 @@ class Layer:
             self.activations = self.rawactivations
         else:
             # Apply the activation function
-            self.activations = 1.0 / ( 1.0 + np.exp(-self.rawactivations) ) # Sigmoid
-            #self.activations = np.maximum(0, self.rawactivations) # ReLU
+            #self.activations = 1.0 / ( 1.0 + np.exp(-self.rawactivations) ) # Sigmoid
+            self.activations = np.maximum(0, self.rawactivations) # ReLU
 
     def backpropagation(self, reference=None):
         if self.next_layer is None: # Output layer
@@ -44,8 +44,8 @@ class Layer:
             self.delta = 2.0 * (self.activations - reference)
         else: # Hidden layer
             # Get this from differentiating the activation function
-            activation_grad = self.activations * (1.0 - self.activations) # Sigmoid
-            #activation_grad = np.where(self.rawactivations > 0, 1.0, 0.0) # ReLU
+            #activation_grad = self.activations * (1.0 - self.activations) # Sigmoid
+            activation_grad = np.where(self.rawactivations > 0, 1.0, 0.0) # ReLU
             self.delta = np.dot(self.next_layer.weights.transpose(), self.next_layer.delta) * activation_grad
 
         self.biases_grad += self.delta
@@ -102,6 +102,8 @@ class Network:
         for ival in range(nvalues):
             rvalues[ival] = max_rvalue * ( ival/nvalues ) + min_rvalue * ( 1.0 - ival/nvalues )
             erefs[ival] = morse_potential(De, re, a, rvalues[ival])
+            erefs[ival] = (erefs[ival] - mean_e) / std_e
+            rvalues[ival] = ( rvalues[ival] - (max_rvalue + min_rvalue) / 2.0 ) / (max_rvalue - min_rvalue)
 
         for ival in range(nvalues):
             # Set the input layer
@@ -118,12 +120,12 @@ def morse_potential(De, re, a, r):
     return De * inner * inner
 
 
-ninputs = 200
-De = 10.0
+ninputs = 300
+De = 1.0
 re = 1.0
 a = 1.0
 min_rvalue = 0.5
-max_rvalue = 5.0
+max_rvalue = 2.0
 training_rate = 0.1
 
 # Randomly generate a set of distances
@@ -133,11 +135,17 @@ rvalues = np.float32( np.random.uniform(min_rvalue, max_rvalue, (ninputs,)) )
 erefs = np.empty( (ninputs,), dtype=np.float32 )
 for idx, r in enumerate(rvalues):
     erefs[idx] = morse_potential(De, re, a, r)
+mean_e = np.mean(erefs)
+std_e = np.std(erefs)
+erefs_normalized = (erefs - mean_e) / std_e
 print(f"erefs: {erefs}")
+print(f"erefs_normalized: {erefs_normalized}")
+
+rvalues_normalized = ( rvalues - (max_rvalue + min_rvalue) / 2.0 ) / (max_rvalue - min_rvalue)
 
 
-net = Network( [1, 32, 32, 1], rvalues, erefs )
-net.train( 200 )
+net = Network( [1, 16, 16, 1], rvalues_normalized, erefs_normalized )
+net.train( 300 )
 net.test()
 
 
