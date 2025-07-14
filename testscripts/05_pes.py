@@ -138,7 +138,7 @@ re = 1.0
 a = 1.0
 min_rvalue = 0.5
 max_rvalue = 2.0
-training_rate = 0.1
+training_rate = 0.02
 
 # Randomly generate a set of distances
 rvalues = np.float32( np.random.uniform(min_rvalue, max_rvalue, (ninputs,)) )
@@ -157,7 +157,7 @@ rvalues_normalized = ( rvalues - (max_rvalue + min_rvalue) / 2.0 ) / (max_rvalue
 
 
 net = Network( [1, 16, 16, 1], rvalues_normalized, erefs_normalized )
-net.train( 300 )
+net.train( 500 )
 net.test()
 
 
