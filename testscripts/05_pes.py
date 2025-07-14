@@ -1,5 +1,5 @@
 import numpy as np
-from time import time
+import time
 import math
 
 class InputLayer():
@@ -74,6 +74,8 @@ class Network:
             print(f"ilayer: {ilayer}")
 
     def train(self, nepochs):
+        feedforward_time = 0.0
+        backpropagation_time = 0.0
         for iepoch in range(nepochs):
             loss = 0.0
             indices = np.random.permutation(ninputs)
@@ -92,20 +94,28 @@ class Network:
                     self.layers[0].activations[0] = inputs_shuffled[iref]
 
                     # Feedforward through the other layers
+                    start_time = time.time()
                     for ilayer in range( 1, len(self.layers) ):
                         self.layers[ilayer].feedforward()
                     #print(f"Output, ref: {self.layers[-1].activations}, {reference}")
                     loss += np.sum( (self.layers[-1].activations - reference)**2 )
+                    feedforward_time += time.time() - start_time
 
                     # Do backpropagation
+                    start_time = time.time()
                     for ilayer in range( len(self.layers)-1 ):
                         self.layers[-1-ilayer].backpropagation(reference)
+                    backpropagation_time += time.time() - start_time
 
                 for ilayer in range( 1, len(self.layers) ):
                     self.layers[ilayer].apply_gradient(batch_size, training_rate)
             
             standard_deviation = math.sqrt( loss / ninputs )
             print(f"Epoch, deviation: {iepoch}, {standard_deviation}")
+            
+        print(f"Feedforward time: {feedforward_time}")
+        print(f"Backpropagation time: {backpropagation_time}")
+
 
     def test(self):
         nvalues = 200
@@ -157,7 +167,9 @@ rvalues_normalized = ( rvalues - (max_rvalue + min_rvalue) / 2.0 ) / (max_rvalue
 
 
 net = Network( [1, 16, 16, 1], rvalues_normalized, erefs_normalized )
+start_time = time.time()
 net.train( 500 )
+print(f"Training time: {time.time() - start_time}")
 net.test()
 
 
