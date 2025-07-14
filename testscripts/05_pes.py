@@ -75,6 +75,7 @@ class Network:
 
     def train(self, nepochs):
         for iepoch in range(nepochs):
+            loss = 0.0
             indices = np.random.permutation(ninputs)
             inputs_shuffled = self.training_inputs[indices]
             refs_shuffled = self.training_references[indices]
@@ -93,7 +94,8 @@ class Network:
                     # Feedforward through the other layers
                     for ilayer in range( 1, len(self.layers) ):
                         self.layers[ilayer].feedforward()
-                    print(f"Output, ref: {self.layers[-1].activations}, {reference}")
+                    #print(f"Output, ref: {self.layers[-1].activations}, {reference}")
+                    loss += np.sum( (self.layers[-1].activations - reference)**2 )
 
                     # Do backpropagation
                     for ilayer in range( len(self.layers)-1 ):
@@ -101,6 +103,9 @@ class Network:
 
                 for ilayer in range( 1, len(self.layers) ):
                     self.layers[ilayer].apply_gradient(batch_size, training_rate)
+            
+            standard_deviation = math.sqrt( loss / ninputs )
+            print(f"Epoch, deviation: {iepoch}, {standard_deviation}")
 
     def test(self):
         nvalues = 200
