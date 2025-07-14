@@ -9,27 +9,48 @@ from pycuda.compiler import SourceModule
 
 cuda_module = SourceModule("""
 __global__ void feedforward(
-  int n_in,
-  float *in,
-  int n_out,
-  float *out,
-  float *raw,
+  int nlayers,
+  int *sizes,
+  float *activations,
+  float *rawactivations,
   float *weights,
   float *biases) {
 
-  int i_out = (blockDim.x * blockIdx.x) + threadIdx.x;
-  if (i_out >= n_out ) return;
+  int inode = (blockDim.x * blockIdx.x) + threadIdx.x;
 
-  // Accumulate the biases and weights for this output value
-  double sum = biases[ i_out ];
-  for (int i_in = 0; i_in < n_in; i_in++) {
-    double weight = weights[ (i_out * n_in) + i_in ];
-    double input = in[ i_in ];
-    sum += weight * input;
+  // Offsets for the first hidden layer
+  int node_offset_prev = 0;
+  int node_offset = sizes[0];
+  int biases_offset = 0;
+  int weights_offset = 0;
+
+  for (int ilayer = 1; ilayer < nlayers; ilayer++) {
+    int size_prev = sizes[ilayer-1];
+    int size = sizes[ilayer];
+
+    if ( inode < size ) {
+      // Accumulate the biases and weights for this output value
+      double sum = biases[ inode + biases_offset ];
+      for (int jnode = 0; jnode < size_prev; jnode++) {
+        double weight = weights[ (inode * size_prev) + jnode + weights_offset ];
+        double input = activations[ jnode + node_offset_prev ];
+        sum += weight * input;
+      }
+      rawactivations[ inode + node_offset ] = sum;
+      activations[ inode + node_offset ] = sum;
+
+      // Apply ReLU
+      if ( activations[ inode + node_offset ] < 0.0f ) {
+        activations[ inode + node_offset ] = 0.0f;
+      }
+    }
+
+    // Update the offsets
+    node_offset_prev += size_prev;
+    node_offset += size;
+    biases_offset += size;
+    weights_offset += size * size_prev;
   }
-  return;
-  raw[ i_out ] = sum;
-  out[ i_out ] = sum;
 
   // Compute the gradient with respect to the weights, if requested
   /*
@@ -47,11 +68,6 @@ __global__ void feedforward(
     }
   }
   */
-
-  // Apply ReLU
-  if ( out[ i_out ] < 0.0f ) {
-    out[ i_out ] = 0.0f;
-  }
 }
 
 
@@ -227,6 +243,10 @@ class Network:
         self.biases_gpu = gpuarray.to_gpu( self.biases )
         self.weights_gpu = gpuarray.to_gpu( self.weights )
 
+        # Initialize the layer sizes
+        self.sizes = np.array( sizes, np.int32 )
+        self.sizes_gpu = gpuarray.to_gpu( self.sizes )
+
     def train(self, nepochs):
         feedforward_time = 0.0
         backpropagation_time = 0.0
@@ -247,30 +267,15 @@ class Network:
                     # Feedforward through the other layers
                     start_time = time.time()
                     self.activations_gpu[0] = inputs_shuffled[iref]
-                    node_offset = 0
-                    biases_offset = 0
-                    weights_offset = 0
-                    for ilayer in range( 1, len(self.layers) ):
-                        n_in = np.float32( self.layers[ilayer-1].size )
-                        inp = self.activations_gpu[node_offset:]
-                        node_offset += self.layers[ilayer-1].size
-                        n_out = np.float32( self.layers[ilayer].size )
-                        out = self.activations_gpu[node_offset:]
-                        raw = self.rawactivations_gpu[node_offset:]
-                        b = self.biases_gpu[biases_offset:]
-                        w = self.weights_gpu[weights_offset:]
-                        feedforward_gpu(
-                            n_in,
-                            inp,
-                            n_out,
-                            out,
-                            raw,
-                            w,
-                            b,
-                            block=(32,1,1),
-                            grid=(1,1,1))
-                        biases_offset += self.layers[ilayer].size
-                        weights_offset += self.layers[ilayer].size * self.layers[ilayer-1].size
+                    feedforward_gpu(
+                        np.int32( len(self.sizes) ),
+                        self.sizes_gpu,
+                        self.activations_gpu,
+                        self.rawactivations_gpu,
+                        self.weights_gpu,
+                        self.biases_gpu,
+                        block=(32,1,1),
+                        grid=(1,1,1))
 
                     # Set the input layer
                     self.layers[0].activations[0] = inputs_shuffled[iref]
@@ -350,6 +355,6 @@ net = Network( [1, 16, 16, 1], rvalues_normalized, erefs_normalized )
 start_time = time.time()
 net.train( 500 )
 print(f"Training time: {time.time() - start_time}")
-net.test()
+#net.test()
 
 
