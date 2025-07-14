@@ -68,6 +68,7 @@ __global__ void feedforward(
     }
   }
   */
+  return;
 }
 
 
@@ -213,7 +214,6 @@ class Network:
         self.layers.append( new_layer )
         for ilayer in range( 1, len(sizes) ):
             self.layers.append( Layer(sizes[ilayer], self.layers[-1]) )
-            print(f"ilayer: {ilayer}")
 
         # Create data for the GPU
         # In order to avoid constantly sending data back and forth between the CPU and the GPU, it is beneficial to have all the weights, activations, of all layers stored together
@@ -225,23 +225,18 @@ class Network:
         self.rawactivations = np.empty( total_nodes, dtype=np.float32 )
         self.rawactivations_gpu = gpuarray.to_gpu( self.rawactivations )
 
-        # Allocate space for the biases and the weights
-        total_biases = 0
-        total_weights = 0
-        for ilayer in range( 1, len(self.layers) ):
-            total_biases += self.layers[ilayer].size
-            total_weights += self.layers[ilayer].size * self.layers[ilayer-1].size
-        self.biases = np.empty( total_biases, dtype=np.float32 )
-        self.weights = np.empty( total_weights, dtype=np.float32 )
-        self.deltas = np.empty( total_biases, dtype=np.float32 )
-
         # Initialize the biases and the weights
+        self.biases = np.empty( 0, dtype=np.float32 )
+        self.weights = np.empty( 0, dtype=np.float32 )
         for ilayer in range( 1, len(self.layers) ):
             scale = np.sqrt( 2.0 / (self.layers[ilayer].size + self.layers[ilayer-1].size) )
-            self.biases = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.layers[ilayer].size,)) )
-            self.weights = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.layers[ilayer].size, self.layers[ilayer-1].size)) )
+            self.biases = np.append( self.biases, scale * np.float32( np.random.uniform(-1.0, 1.0, (self.layers[ilayer].size,)) ) )
+            self.weights = np.append( self.weights, scale * np.float32( np.random.uniform(-1.0, 1.0, (self.layers[ilayer].size * self.layers[ilayer-1].size)) ) )
+        print(f"WWWWWWWWWWWWW: {self.weights}")
         self.biases_gpu = gpuarray.to_gpu( self.biases )
         self.weights_gpu = gpuarray.to_gpu( self.weights )
+        self.deltas = np.empty_like( self.biases, dtype=np.float32 )
+        self.deltas_gpu = gpuarray.to_gpu( self.deltas )
 
         # Initialize the layer sizes
         self.sizes = np.array( sizes, np.int32 )
@@ -259,10 +254,16 @@ class Network:
             #batch_size = ninputs
             batch_size = 32
             for istart in range(0, ninputs, batch_size):
+                print(f"batch: {iepoch}, {istart}")
                 iend = min(istart + batch_size, ninputs)
 
                 for iref in range(istart, iend):
                     reference = refs_shuffled[iref]
+
+                    ###############
+                    # Convert the weights and biases to the GPU
+                    ###############
+                    
 
                     # Feedforward through the other layers
                     start_time = time.time()
@@ -276,6 +277,10 @@ class Network:
                         self.biases_gpu,
                         block=(32,1,1),
                         grid=(1,1,1))
+
+                    ##############
+                    # Convert the activations and rawactivations to the CPU
+                    ##############
 
                     # Set the input layer
                     self.layers[0].activations[0] = inputs_shuffled[iref]
