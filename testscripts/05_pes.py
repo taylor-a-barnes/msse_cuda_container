@@ -37,6 +37,7 @@ class Layer:
             # Apply the activation function
             #self.activations = 1.0 / ( 1.0 + np.exp(-self.rawactivations) ) # Sigmoid
             self.activations = np.maximum(0, self.rawactivations) # ReLU
+            #self.activations = np.tanh(self.rawactivations) # tanh
 
     def backpropagation(self, reference=None):
         if self.next_layer is None: # Output layer
@@ -46,6 +47,7 @@ class Layer:
             # Get this from differentiating the activation function
             #activation_grad = self.activations * (1.0 - self.activations) # Sigmoid
             activation_grad = np.where(self.rawactivations > 0, 1.0, 0.0) # ReLU
+            #activation_grad = 1.0 - self.activations**2
             self.delta = np.dot(self.next_layer.weights.transpose(), self.next_layer.delta) * activation_grad
 
         self.biases_grad += self.delta
@@ -73,27 +75,32 @@ class Network:
 
     def train(self, nepochs):
         for iepoch in range(nepochs):
-            batch_size = ninputs
-            indices = np.random.permutation(batch_size)
+            indices = np.random.permutation(ninputs)
             inputs_shuffled = self.training_inputs[indices]
             refs_shuffled = self.training_references[indices]
-            for iref in range(batch_size):
-                reference = refs_shuffled[iref]
-                
-                # Set the input layer
-                self.layers[0].activations[0] = inputs_shuffled[iref]
 
-                # Feedforward through the other layers
+            #batch_size = ninputs
+            batch_size = 32
+            for istart in range(0, ninputs, batch_size):
+                iend = min(istart + batch_size, ninputs)
+
+                for iref in range(istart, iend):
+                    reference = refs_shuffled[iref]
+
+                    # Set the input layer
+                    self.layers[0].activations[0] = inputs_shuffled[iref]
+
+                    # Feedforward through the other layers
+                    for ilayer in range( 1, len(self.layers) ):
+                        self.layers[ilayer].feedforward()
+                    print(f"Output, ref: {self.layers[-1].activations}, {reference}")
+
+                    # Do backpropagation
+                    for ilayer in range( len(self.layers)-1 ):
+                        self.layers[-1-ilayer].backpropagation(reference)
+
                 for ilayer in range( 1, len(self.layers) ):
-                    self.layers[ilayer].feedforward()
-                print(f"Output, ref: {self.layers[-1].activations}, {reference}")
-
-                # Do backpropagation
-                for ilayer in range( len(self.layers)-1 ):
-                    self.layers[-1-ilayer].backpropagation(reference)
-
-            for ilayer in range( 1, len(self.layers) ):
-                self.layers[ilayer].apply_gradient(batch_size, training_rate)
+                    self.layers[ilayer].apply_gradient(batch_size, training_rate)
 
     def test(self):
         nvalues = 200
