@@ -17,8 +17,8 @@ class Layer:
 
         # Xavier initialization
         scale = np.sqrt( 2.0 / (self.size + self.previous_layer.size) )
-        self.weights = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.size, self.previous_layer.size)) )
         self.biases = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.size,)) )
+        self.weights = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.size, self.previous_layer.size)) )
         
         # The activations, before applying sigmoid
         self.rawactivations = np.zeros( (self.size,), dtype=np.float32 )
@@ -51,9 +51,7 @@ class Layer:
             self.delta = np.dot(self.next_layer.weights.transpose(), self.next_layer.delta) * activation_grad
 
         self.biases_grad += self.delta
-        for i, delt in enumerate(self.delta):
-            for j, act in enumerate(self.previous_layer.activations):
-                self.weights_grad[i][j] += delt * act
+        self.weights_grad += np.outer(self.delta, self.previous_layer.activations)
     
     def apply_gradient(self, batch_size, training_rate):
         self.weights = self.weights - ( training_rate / batch_size ) * self.weights_grad
