@@ -229,7 +229,7 @@ class Network:
         self.rawactivations_gpu = gpuarray.to_gpu( self.rawactivations )
 
         # Initialize the biases and the weights
-        self.biases = np.zeros( 1, dtype=np.float32 )
+        self.biases = np.empty( 0, dtype=np.float32 )
         self.weights = np.empty( 0, dtype=np.float32 )
         for ilayer in range( 1, len(self.layers) ):
             scale = np.sqrt( 2.0 / (self.layers[ilayer].size + self.layers[ilayer-1].size) )

@@ -116,14 +116,11 @@ __global__ void backpropagation(
     biases_offset -= size;
     weights_offset -= size * size_prev;
 
-    if ( inode == 0 ) {
-      printf("AAA: %d %d\\n", ilayer, weights_offset);
-    }
-
     if ( inode < size ) {
 
       if ( ilayer == nlayers - 1 ) { // Output layer
         delta[inode + biases_offset] = 2.0f * ( activations[inode + node_offset] - reference[inode] );
+//        printf("AAAAAAAAAAAAAAAAAAAA: %f %f\\n", activations[inode + node_offset], reference[inode] );
       }
       else { // Hidden layer
         float activation_grad = 0.0f;
@@ -142,10 +139,11 @@ __global__ void backpropagation(
 
       // Update the gradients
       biases_grad[inode + biases_offset] += delta[inode + biases_offset];
+      //biases_grad[inode + biases_offset] = 10.0f * ((float) ilayer);
       for ( int iprev = 0; iprev < size_prev; iprev++ ) {
         // CHECK THIS LINE
         int weights_offset_prev = weights_offset - (size * size_prev);
-        weights_grad[ (inode * size_prev) + iprev + weights_offset_prev] += delta[inode + biases_offset] * activations[iprev + node_offset_prev];
+        weights_grad[ (inode * size_prev) + iprev + weights_offset] += delta[inode + biases_offset] * activations[iprev + node_offset_prev];
       }
 
     }
@@ -267,7 +265,7 @@ class Network:
         self.rawactivations_gpu = gpuarray.to_gpu( self.rawactivations )
 
         # Initialize the biases and the weights
-        self.biases = np.zeros( 1, dtype=np.float32 )
+        self.biases = np.empty( 0, dtype=np.float32 )
         self.weights = np.empty( 0, dtype=np.float32 )
         for ilayer in range( 1, len(self.layers) ):
             scale = np.sqrt( 2.0 / (self.layers[ilayer].size + self.layers[ilayer-1].size) )
@@ -311,12 +309,16 @@ class Network:
                         layer = self.layers[ilayer]
                         for inode in range( layer.size ):
                             self.biases[inode + biases_offset] = layer.biases[inode]
+                            self.biases_grad[inode + biases_offset] = layer.biases_grad[inode]
                             for jnode in range( self.layers[ilayer-1].size ):
                                 self.weights[(inode * self.layers[ilayer-1].size) + jnode + weights_offset] = layer.weights[inode][jnode]
+                                self.weights_grad[(inode * self.layers[ilayer-1].size) + jnode + weights_offset] = layer.weights_grad[inode][jnode]
                         biases_offset += layer.size
                         weights_offset += layer.size * self.layers[ilayer-1].size
                     self.biases_gpu = gpuarray.to_gpu( self.biases )
                     self.weights_gpu = gpuarray.to_gpu( self.weights )
+                    self.biases_grad_gpu = gpuarray.to_gpu( self.biases_grad )
+                    self.weights_grad_gpu = gpuarray.to_gpu( self.weights_grad )
 
                     # Feedforward through the other layers
                     start_time = time.time()
@@ -356,7 +358,7 @@ class Network:
                     start_time = time.time()
                     for ilayer in range( len(self.layers)-1 ):
                         self.layers[-1-ilayer].backpropagation(reference)
-                        print(f"layer grad: {self.layers[-1-ilayer].biases_grad}")
+                        #print(f"layer grad: {self.layers[-1-ilayer].biases_grad}")
                     backpropagation_time += time.time() - start_time
 
                     reference_gpu = gpuarray.to_gpu( reference )
@@ -381,15 +383,15 @@ class Network:
                     ###############
                     self.weights_grad = self.weights_grad_gpu.get()
                     self.biases_grad = self.biases_grad_gpu.get()
-                    print(f"biases_grad: {self.biases_grad}")
+                    #print(f"biases_grad: {self.biases_grad}")
                     biases_offset = 0
                     weights_offset = 0
                     for ilayer in range(1, len(self.sizes)):
                         layer = self.layers[ilayer]
                         for inode in range( layer.size ):
                             layer.biases_grad[inode] = self.biases_grad[inode + biases_offset]
-                            #for jnode in range( self.layers[ilayer-1].size ):
-                            #    layer.weights_grad[inode][jnode] = self.weights_grad[(inode * self.layers[ilayer-1].size) + jnode + weights_offset]
+                            for jnode in range( self.layers[ilayer-1].size ):
+                                layer.weights_grad[inode][jnode] = self.weights_grad[(inode * self.layers[ilayer-1].size) + jnode + weights_offset]
                         biases_offset += layer.size
                         weights_offset += layer.size * self.layers[ilayer-1].size
 
