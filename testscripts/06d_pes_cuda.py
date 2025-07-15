@@ -50,9 +50,8 @@ __global__ void feedforward(
       }
       else { // Last layer
         // Compute the loss
-        //MAKE THIS ATOMIC
         float error = activations[inode + node_offset] - reference[inode]; 
-        loss[0] += error * error;
+        atomicAdd( &loss[0], error * error );
       }
     }
 
