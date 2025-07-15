@@ -55,22 +55,6 @@ __global__ void feedforward(
     weights_offset += size * size_prev;
   }
 
-  // Compute the gradient with respect to the weights, if requested
-  /*
-  if ( weight_flag >= 0 && i_out == weight_flag / n_in ) {
-    int i_in = weight_flag % n_in;
-    for(int i_batch = 0; i_batch < batch_size; i_batch++) {
-      out[ (i_batch * n_out) + i_out ] += delta * in[ (i_batch * n_in) + i_in ];
-    }
-  }
-
-  // Compute the gradient with respect to the bias, if requested
-  if ( bias_flag >= 0 && i_out == bias_flag ) {
-    for (int i_batch = 0; i_batch < batch_size; i_batch++) {
-      out[ (i_batch * n_out) + i_out ] += delta;
-    }
-  }
-  */
   return;
 }
 
@@ -120,36 +104,29 @@ __global__ void backpropagation(
 
       if ( ilayer == nlayers - 1 ) { // Output layer
         delta[inode + biases_offset] = 2.0f * ( activations[inode + node_offset] - reference[inode] );
-//        printf("AAAAAAAAAAAAAAAAAAAA: %f %f\\n", activations[inode + node_offset], reference[inode] );
       }
       else { // Hidden layer
         float activation_grad = 0.0f;
         if ( rawactivations[inode + node_offset] > 0.0f ) {
-          activation_grad = 1.0;
+          activation_grad = 1.0f;
         }
         delta[inode + biases_offset] = 0.0f;
         for ( int inext = 0; inext < sizes[ilayer+1]; inext++ ) {
-          // CHECK THIS LINE
           int weights_offset_next = weights_offset + (size * size_prev);
           int biases_offset_next = biases_offset + size;
-          delta[inode + biases_offset] = weights[ (inext * size ) + inode + weights_offset_next ] * delta[ inext + biases_offset_next ];
+          delta[inode + biases_offset] += weights[ (inext * size ) + inode + weights_offset_next ] * delta[ inext + biases_offset_next ];
         }
         delta[inode + biases_offset] *= activation_grad;
       }
 
       // Update the gradients
       biases_grad[inode + biases_offset] += delta[inode + biases_offset];
-      //biases_grad[inode + biases_offset] = 10.0f * ((float) ilayer);
       for ( int iprev = 0; iprev < size_prev; iprev++ ) {
-        // CHECK THIS LINE
         int weights_offset_prev = weights_offset - (size * size_prev);
         weights_grad[ (inode * size_prev) + iprev + weights_offset] += delta[inode + biases_offset] * activations[iprev + node_offset_prev];
       }
 
     }
-
-
-
   }
 }
 
@@ -356,10 +333,8 @@ class Network:
 
                     # Do backpropagation
                     start_time = time.time()
-                    for ilayer in range( len(self.layers)-1 ):
-                        self.layers[-1-ilayer].backpropagation(reference)
-                        #print(f"layer grad: {self.layers[-1-ilayer].biases_grad}")
-                    backpropagation_time += time.time() - start_time
+                    #for ilayer in range( len(self.layers)-1 ):
+                    #    self.layers[-1-ilayer].backpropagation(reference)
 
                     reference_gpu = gpuarray.to_gpu( reference )
                     backpropagation_gpu(
@@ -376,14 +351,11 @@ class Network:
                         block=(32,1,1),
                         grid=(1,1,1))
 
-
-
                     ###############
                     # Convert the weights and biases gradients to the CPU
                     ###############
                     self.weights_grad = self.weights_grad_gpu.get()
                     self.biases_grad = self.biases_grad_gpu.get()
-                    #print(f"biases_grad: {self.biases_grad}")
                     biases_offset = 0
                     weights_offset = 0
                     for ilayer in range(1, len(self.sizes)):
@@ -395,6 +367,7 @@ class Network:
                         biases_offset += layer.size
                         weights_offset += layer.size * self.layers[ilayer-1].size
 
+                    backpropagation_time += time.time() - start_time
 
                 for ilayer in range( 1, len(self.layers) ):
                     self.layers[ilayer].apply_gradient(batch_size, training_rate)
