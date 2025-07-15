@@ -86,7 +86,7 @@ class Network:
                 iend = min(istart + batch_size, ninputs)
 
                 for iref in range(istart, iend):
-                    reference = refs_shuffled[iref]
+                    reference = np.array( refs_shuffled[iref], dtype=np.float32 )
 
                     # Set the input layer
                     self.layers[0].activations[0] = inputs_shuffled[iref]

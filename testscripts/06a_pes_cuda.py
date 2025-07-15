@@ -258,7 +258,7 @@ class Network:
                 iend = min(istart + batch_size, ninputs)
 
                 for iref in range(istart, iend):
-                    reference = refs_shuffled[iref]
+                    reference = np.array( refs_shuffled[iref], dtype=np.float32 )
 
                     ###############
                     # Convert the weights and biases to the GPU
