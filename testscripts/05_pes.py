@@ -17,8 +17,8 @@ class Layer:
 
         # Xavier initialization
         scale = np.sqrt( 2.0 / (self.size + self.previous_layer.size) )
-        self.biases = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.size,)) )
-        self.weights = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.size, self.previous_layer.size)) )
+        self.biases =  np.float32( np.random.uniform(-scale, scale, (self.size,)) )
+        self.weights = np.float32( np.random.uniform(-scale, scale, (self.size, self.previous_layer.size)) )
         
         # The activations, before applying sigmoid
         self.rawactivations = np.zeros( (self.size,), dtype=np.float32 )

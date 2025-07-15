@@ -24,7 +24,19 @@ __global__ void feedforward(
   int biases_offset = 0;
   int weights_offset = 0;
 
-  printf("Hello biases %f\\n",biases[0]);
+  /*
+  if (inode == 0 ) {
+    int bo = 0;
+    for ( int ilayer = 1; ilayer < nlayers; ilayer++ ) {
+      int size = sizes[ilayer];
+      for ( int ii = 0; ii < size; ii++ ) {
+        printf("   ilayer, inode, bias: %d, %d, %f\\n",ilayer, ii, biases[ ii + bo ]);
+      }
+      printf("Layer, size: %d, %d\\n", ilayer, size);
+      bo += size;
+    }
+  }
+  */
 
   for (int ilayer = 1; ilayer < nlayers; ilayer++) {
     int size_prev = sizes[ilayer-1];
@@ -229,12 +241,12 @@ class Network:
         self.rawactivations_gpu = gpuarray.to_gpu( self.rawactivations )
 
         # Initialize the biases and the weights
-        self.biases = np.empty( 0, dtype=np.float32 )
+        self.biases = np.zeros( 1, dtype=np.float32 )
         self.weights = np.empty( 0, dtype=np.float32 )
         for ilayer in range( 1, len(self.layers) ):
             scale = np.sqrt( 2.0 / (self.layers[ilayer].size + self.layers[ilayer-1].size) )
-            self.biases = np.append( self.biases, scale * np.float32( np.random.uniform(-1.0, 1.0, (self.layers[ilayer].size,)) ) )
-            self.weights = np.append( self.weights, scale * np.float32( np.random.uniform(-1.0, 1.0, (self.layers[ilayer].size * self.layers[ilayer-1].size)) ) )
+            self.biases = np.append( self.biases, np.float32( np.random.uniform(-scale, scale, (self.layers[ilayer].size,)) ) )
+            self.weights = np.append( self.weights, np.float32( np.random.uniform(-scale, scale, (self.layers[ilayer].size * self.layers[ilayer-1].size)) ) )
         #print(f"WWWWWWWWWWWWW: {self.weights}")
         #print(f"BBBBBBBBBBBBBB: {self.biases}")
         self.biases_gpu = gpuarray.to_gpu( self.biases )
@@ -270,7 +282,7 @@ class Network:
                     weights_offset = 0
                     for ilayer in range(1, len(self.sizes)):
                         layer = self.layers[ilayer]
-                        print(f"TTT: {layer.biases}")
+                        #print(f"TTT: {layer.biases}")
                         for inode in range( layer.size ):
                             #print(f"g: {layer.biases[inode]}")
                             self.biases[inode + biases_offset] = layer.biases[inode]
@@ -278,7 +290,7 @@ class Network:
                                 self.weights[(inode * self.layers[ilayer-1].size) + jnode + weights_offset] = layer.weights[inode][jnode]
                         biases_offset += layer.size
                         weights_offset += layer.size * self.layers[ilayer-1].size
-                    print(f"GGGGGGGGGGGGGGG: {self.biases}")
+                    #print(f"GGGGGGGGGGGGGGG: {self.biases}")
                     self.biases_gpu = gpuarray.to_gpu( self.biases )
                     self.weights_gpu = gpuarray.to_gpu( self.weights )
 
@@ -300,14 +312,14 @@ class Network:
                     ##############
                     self.activations = self.activations_gpu.get()
                     self.rawactivations = self.rawactivations_gpu.get()
-                    print(f"GPU activations: {self.activations}")
-                    #nodes_offset = self.layers[0].size
-                    #for ilayer in range(1, len(self.sizes)):
-                    #    layer = self.layers[ilayer]
-                    #    for inode in range( layer.size ):
-                    #        layer.activations[inode] = self.activations[inode + nodes_offset]
-                    #        layer.rawactivations[inode] = self.rawactivations[inode + nodes_offset]
-                    #    nodes_offset += layer.size
+                    #print(f"GPU activations: {self.activations}")
+                    nodes_offset = self.layers[0].size
+                    for ilayer in range(1, len(self.sizes)):
+                        layer = self.layers[ilayer]
+                        for inode in range( layer.size ):
+                            layer.activations[inode] = self.activations[inode + nodes_offset]
+                            layer.rawactivations[inode] = self.rawactivations[inode + nodes_offset]
+                        nodes_offset += layer.size
                         #print(f"ACTIVATIONS: {iepoch}, {layer.activations}")
 
                     # Set the input layer
@@ -386,7 +398,7 @@ rvalues_normalized = ( rvalues - (max_rvalue + min_rvalue) / 2.0 ) / (max_rvalue
 
 net = Network( [1, 16, 16, 1], rvalues_normalized, erefs_normalized )
 start_time = time.time()
-net.train( 1 )
+net.train( 500 )
 print(f"Training time: {time.time() - start_time}")
 #net.test()
 
