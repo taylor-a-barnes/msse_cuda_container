@@ -167,8 +167,7 @@ class Layer:
         scale = np.sqrt( 2.0 / (self.size + self.previous_layer.size) )
         self.biases = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.size,)) )
         self.weights = scale * np.float32( np.random.uniform(-1.0, 1.0, (self.size, self.previous_layer.size)) )
-        print(f"self.biases: {self.biases}")
-        
+
         # The activations, before applying sigmoid
         self.rawactivations = np.zeros( (self.size,), dtype=np.float32 )
         self.activations = np.zeros( (self.size,), dtype=np.float32 )
@@ -236,8 +235,6 @@ class Network:
             scale = np.sqrt( 2.0 / (self.layers[ilayer].size + self.layers[ilayer-1].size) )
             self.biases = np.append( self.biases, np.float32( np.random.uniform(-scale, scale, (self.layers[ilayer].size,)) ) )
             self.weights = np.append( self.weights, np.float32( np.random.uniform(-scale, scale, (self.layers[ilayer].size * self.layers[ilayer-1].size)) ) )
-        #print(f"WWWWWWWWWWWWW: {self.weights}")
-        #print(f"BBBBBBBBBBBBBB: {self.biases}")
         self.biases_gpu = gpuarray.to_gpu( self.biases )
         self.weights_gpu = gpuarray.to_gpu( self.weights )
         self.deltas = np.empty_like( self.biases, dtype=np.float32 )
@@ -256,7 +253,6 @@ class Network:
             inputs_shuffled = self.training_inputs[indices]
             refs_shuffled = self.training_references[indices]
 
-            #batch_size = ninputs
             batch_size = 32
             for istart in range(0, ninputs, batch_size):
                 iend = min(istart + batch_size, ninputs)
@@ -271,15 +267,12 @@ class Network:
                     weights_offset = 0
                     for ilayer in range(1, len(self.sizes)):
                         layer = self.layers[ilayer]
-                        #print(f"TTT: {layer.biases}")
                         for inode in range( layer.size ):
-                            #print(f"g: {layer.biases[inode]}")
                             self.biases[inode + biases_offset] = layer.biases[inode]
                             for jnode in range( self.layers[ilayer-1].size ):
                                 self.weights[(inode * self.layers[ilayer-1].size) + jnode + weights_offset] = layer.weights[inode][jnode]
                         biases_offset += layer.size
                         weights_offset += layer.size * self.layers[ilayer-1].size
-                    #print(f"GGGGGGGGGGGGGGG: {self.biases}")
                     self.biases_gpu = gpuarray.to_gpu( self.biases )
                     self.weights_gpu = gpuarray.to_gpu( self.weights )
 
@@ -304,7 +297,6 @@ class Network:
                     ##############
                     self.activations = self.activations_gpu.get()
                     self.rawactivations = self.rawactivations_gpu.get()
-                    #print(f"GPU activations: {self.activations}")
                     nodes_offset = self.layers[0].size
                     for ilayer in range(1, len(self.sizes)):
                         layer = self.layers[ilayer]
@@ -312,13 +304,9 @@ class Network:
                             layer.activations[inode] = self.activations[inode + nodes_offset]
                             layer.rawactivations[inode] = self.rawactivations[inode + nodes_offset]
                         nodes_offset += layer.size
-                        #print(f"ACTIVATIONS: {iepoch}, {layer.activations}")
-                    #print(f"GPU activation: {self.layers[-1].activations}")
 
                     #for ilayer in range( 1, len(self.layers) ):
                     #    self.layers[ilayer].feedforward()
-                    #print(f"CPU activation: {self.layers[-1].activations}")
-                    #print(f"Output, ref: {self.layers[-1].activations}, {reference}")
                     loss += np.sum( (self.layers[-1].activations - reference)**2 )
                     feedforward_time += time.time() - start_time
 
