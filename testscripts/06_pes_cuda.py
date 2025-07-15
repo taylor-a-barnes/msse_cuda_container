@@ -24,38 +24,27 @@ __global__ void feedforward(
   int biases_offset = 0;
   int weights_offset = 0;
 
-  /*
-  if (inode == 0 ) {
-    int bo = 0;
-    for ( int ilayer = 1; ilayer < nlayers; ilayer++ ) {
-      int size = sizes[ilayer];
-      for ( int ii = 0; ii < size; ii++ ) {
-        printf("   ilayer, inode, bias: %d, %d, %f\\n",ilayer, ii, biases[ ii + bo ]);
-      }
-      printf("Layer, size: %d, %d\\n", ilayer, size);
-      bo += size;
-    }
-  }
-  */
-
   for (int ilayer = 1; ilayer < nlayers; ilayer++) {
+    __syncthreads();
     int size_prev = sizes[ilayer-1];
     int size = sizes[ilayer];
 
     if ( inode < size ) {
       // Accumulate the biases and weights for this output value
-      double sum = (double) biases[ inode + biases_offset ];
+      double sum = biases[ inode + biases_offset ];
       for (int jnode = 0; jnode < size_prev; jnode++) {
         double weight = weights[ (inode * size_prev) + jnode + weights_offset ];
         double input = activations[ jnode + node_offset_prev ];
-        //sum += weight * input;
+        sum += weight * input;
       }
       rawactivations[ inode + node_offset ] = sum;
       activations[ inode + node_offset ] = sum;
 
       // Apply ReLU
-      if ( activations[ inode + node_offset ] < 0.0f ) {
-        activations[ inode + node_offset ] = 0.0f;
+      if ( ilayer < nlayers - 1 ) { // Don't apply ReLU to the output layer
+        if ( activations[ inode + node_offset ] < 0.0f ) {
+          activations[ inode + node_offset ] = 0.0f;
+        }
       }
     }
 
@@ -307,6 +296,9 @@ class Network:
                         block=(32,1,1),
                         grid=(1,1,1))
 
+                    # Set the input layer
+                    self.layers[0].activations[0] = inputs_shuffled[iref]
+
                     ##############
                     # Convert the activations and rawactivations to the CPU
                     ##############
@@ -321,12 +313,11 @@ class Network:
                             layer.rawactivations[inode] = self.rawactivations[inode + nodes_offset]
                         nodes_offset += layer.size
                         #print(f"ACTIVATIONS: {iepoch}, {layer.activations}")
-
-                    # Set the input layer
-                    self.layers[0].activations[0] = inputs_shuffled[iref]
+                    #print(f"GPU activation: {self.layers[-1].activations}")
 
                     #for ilayer in range( 1, len(self.layers) ):
                     #    self.layers[ilayer].feedforward()
+                    #print(f"CPU activation: {self.layers[-1].activations}")
                     #print(f"Output, ref: {self.layers[-1].activations}, {reference}")
                     loss += np.sum( (self.layers[-1].activations - reference)**2 )
                     feedforward_time += time.time() - start_time
