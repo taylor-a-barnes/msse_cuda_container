@@ -287,7 +287,7 @@ class Network:
         self.loss = np.zeros( 1, dtype=np.float32 )
         self.loss_gpu = gpuarray.to_gpu( self.loss )
 
-    def train(self, nepochs):
+    def train_gpu(self, nepochs):
         feedforward_time = 0.0
         backpropagation_time = 0.0
         for iepoch in range(nepochs):
@@ -409,7 +409,7 @@ rvalues_normalized = ( rvalues - (max_rvalue + min_rvalue) / 2.0 ) / (max_rvalue
 
 net = Network( [1, 16, 16, 1], rvalues_normalized, erefs_normalized )
 start_time = time.time()
-net.train( 500 )
+net.train_gpu( 500 )
 print(f"Training time: {time.time() - start_time}")
 #net.test()
 
