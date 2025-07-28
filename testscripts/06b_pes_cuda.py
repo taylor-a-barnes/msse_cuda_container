@@ -199,7 +199,7 @@ class Layer:
             self.activations = np.maximum(0, self.rawactivations) # ReLU
             #self.activations = np.tanh(self.rawactivations) # tanh
 
-    def backpropagation(self, reference=None):
+    def backpropagation(self, reference):
         if self.next_layer is None: # Output layer
             # Get this from differentiating the cost function
             self.delta = 2.0 * (self.activations - reference)
