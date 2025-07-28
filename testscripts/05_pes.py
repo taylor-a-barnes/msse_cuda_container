@@ -8,12 +8,11 @@ class InputLayer():
         self.activations = np.zeros( (self.size,), dtype=np.float32 )
 
 class Layer:
-    def __init__(self, size, previous_layer=None):
+    def __init__(self, size, previous_layer):
         self.size = size
         self.previous_layer = previous_layer
         self.next_layer = None
-        if self.previous_layer is not None:
-            self.previous_layer.next_layer = self
+        self.previous_layer.next_layer = self
 
         # Xavier initialization
         scale = np.sqrt( 2.0 / (self.size + self.previous_layer.size) )
