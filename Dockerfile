@@ -22,6 +22,13 @@ RUN apt-get clean && \
 # Symlink python3 to python
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
+# Set environment variables for CUDA
+ENV CUDA_HOME=/usr/local/cuda
+ENV CPATH=${CUDA_HOME}/targets/x86_64-linux/include:${CUDA_HOME}/include
+ENV LIBRARY_PATH=${CUDA_HOME}/targets/x86_64-linux/lib:${CUDA_HOME}/lib64
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/targets/x86_64-linux/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+
 # Install PyCUDA and other Python packages
 RUN python -m pip install --upgrade pip setuptools wheel && \
     python -m pip install \

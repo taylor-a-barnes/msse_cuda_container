@@ -37,7 +37,7 @@ image_height = 32
 image_data = np.zeros((image_height,image_width,3), dtype = np.uint8)
 image_data_gpu = gpuarray.to_gpu(image_data)
 
-cuda_module = pycuda.compiler.SourceModule("""
+cuda_module = SourceModule("""
 #include <stdint.h>
 
 __global__ void create_image(uint8_t *image_data) {
@@ -64,7 +64,7 @@ image_height = 32
 image_data = np.zeros((image_height,image_width,3), dtype = np.uint8)
 image_data_gpu = gpuarray.to_gpu(image_data)
 
-cuda_module = pycuda.compiler.SourceModule("""
+cuda_module = SourceModule("""
 #include <stdint.h>
 
 __global__ void create_image(uint8_t *image_data, int image_width, int image_height) {
@@ -95,7 +95,7 @@ image_height = 32
 image_data = np.zeros((image_height,image_width,3), dtype = np.uint8)
 image_data_gpu = gpuarray.to_gpu(image_data)
 
-cuda_module = pycuda.compiler.SourceModule("""
+cuda_module = SourceModule("""
 #include <stdint.h>
 
 __global__ void create_image(uint8_t *image_data, int image_width, int image_height) {
@@ -129,7 +129,7 @@ image_height = 64
 image_data = np.zeros((image_height,image_width,3), dtype = np.uint8)
 image_data_gpu = gpuarray.to_gpu(image_data)
 
-cuda_module = pycuda.compiler.SourceModule("""
+cuda_module = SourceModule("""
 #include <stdint.h>
 
 __global__ void create_image(uint8_t *image_data, int image_width, int image_height) {
@@ -161,7 +161,7 @@ image_height = 512
 image_data = np.zeros((image_height,image_width,3), dtype = np.uint8)
 image_data_gpu = gpuarray.to_gpu(image_data)
 
-cuda_module = pycuda.compiler.SourceModule("""
+cuda_module = SourceModule("""
 #include <stdint.h>
 
 __global__ void create_image(uint8_t *image_data, int image_width, int image_height) {

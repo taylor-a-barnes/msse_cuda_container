@@ -26,7 +26,7 @@ scalar_kernel = ElementwiseKernel(
 
 # Here is a custom kernel that does the same thing:
 # Note: scalar_math2 is meant to be added later in the lesson
-cuda_module = pycuda.compiler.SourceModule("""
+cuda_module = SourceModule("""
 __global__ void scalar_math(float *input, float *result) {
   result[threadIdx.x] = ( 10 * input[threadIdx.x] ) + 1;
 }
