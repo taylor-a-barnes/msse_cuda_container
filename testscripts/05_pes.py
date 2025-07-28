@@ -148,7 +148,7 @@ max_rvalue = 2.0
 training_rate = 0.02
 
 # Randomly generate a set of distances
-rvalues = np.float32( np.random.uniform(min_rvalue, max_rvalue, (ninputs,)) )
+rvalues = np.random.uniform(min_rvalue, max_rvalue, (ninputs,)).astype(np.float32)
 
 # Generate the reference energies for each of these distances
 erefs = np.empty( (ninputs,), dtype=np.float32 )
